@@ -74,3 +74,64 @@ VALUES (p_nome, p_email, p_hash_senha, p_salt_senha, p_endereco);
 END$$
 
 DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_criar_pedido (
+    IN p_cliente_id INT UNSIGNED,
+    OUT p_pedido_id INT UNSIGNED, -- Retorna o ID do pedido criado
+    OUT p_mensagem_status VARCHAR(255) -- Retorna uma mensagem de sucesso ou erro
+)
+BEGIN
+    DECLARE v_num_itens_carrinho INT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK; -- Desfaz todas as operações em caso de erro
+        SET p_pedido_id = NULL;
+        SET p_mensagem_status = 'Erro ao criar o pedido. Transação desfeita.';
+    END;
+
+    -- Inicia a transação para garantir que todas as operações sejam atômicas
+    START TRANSACTION;
+
+    -- 1. Verificar se o carrinho do cliente não está vazio
+    SELECT COUNT(*) INTO v_num_itens_carrinho
+    FROM Carrinho
+    WHERE cliente_id = p_cliente_id;
+
+    IF v_num_itens_carrinho = 0 THEN
+        SET p_pedido_id = NULL;
+        SET p_mensagem_status = 'Carrinho de compras vazio. Não é possível criar um pedido.';
+        ROLLBACK; -- Desfaz a transação (embora nada tenha sido feito ainda, é boa prática)
+    ELSE
+        -- 2. Inserir o novo pedido na tabela Pedidos
+        INSERT INTO Pedidos (cliente_id, status)
+        VALUES (p_cliente_id, 'Aberto'); -- Status inicial 'Aberto'
+
+        -- Capturar o ID do pedido recém-criado
+        SET p_pedido_id = LAST_INSERT_ID();
+
+        -- 3. Mover os itens do carrinho para a tabela Itens_Pedido
+        INSERT INTO Itens_Pedido (pedido_id, livro_id, quantidade, preco_unitario)
+        SELECT
+            p_pedido_id,
+            carr.livro_id,
+            carr.quantidade,
+            liv.preco -- Captura o preço atual do livro no momento da compra
+        FROM Carrinho carr
+        JOIN Livros liv ON carr.livro_id = liv.id
+        WHERE carr.cliente_id = p_cliente_id;
+
+        -- 4. Limpar o carrinho do cliente após a criação do pedido
+        DELETE FROM Carrinho
+        WHERE cliente_id = p_cliente_id;
+
+        -- Se tudo correu bem, confirma a transação
+        COMMIT;
+        SET p_mensagem_status = 'Pedido criado com sucesso!';
+    END IF;
+
+END$$
+
+DELIMITER ;
