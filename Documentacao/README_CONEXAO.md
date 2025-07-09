@@ -1,6 +1,6 @@
 ## 🌐 Guia de Conexão e Configuração do Banco de Dados
 
-Este documento detalha os passos para configurar o ambiente de banco de dados do projeto, permitindo o uso colaborativo por meio de uma arquitetura Host/Cliente.
+Este documento detalha o passo a passo para configurar o ambiente de banco de dados do projeto, permitindo o uso colaborativo por meio de uma arquitetura Host/Cliente.
 
 ---
 

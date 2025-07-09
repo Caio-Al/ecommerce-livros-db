@@ -88,13 +88,13 @@ Ou utilize o script consolidado:
 
 Para configurar seu ambiente local e acessar o banco remotamente (host/cliente), siga o guia detalhado:
 
-📄 [Guia de Conexão e Configuração do Banco de Dados](README_CONEXAO.md)
+📄 [Guia de Conexão e Configuração do Banco de Dados](Documentacao/README_CONEXAO.md)
 
 ## 🌐 Backup e Restauração
 
 Para configurar seu backup atomatico e restaurar o banco de dados, siga o guia detalhado:
 
-📦 [Guia de Backup e Política de Retenção](README_BACKUP.md)
+📦 [Guia de Backup e Política de Retenção](Documentacao/README_BACKUP.md)    
 
 
 

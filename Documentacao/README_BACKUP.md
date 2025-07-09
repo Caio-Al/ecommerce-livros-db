@@ -81,4 +81,3 @@ Use as flags `--start-datetime` e `--stop-datetime` para maior precisão.
 
 ---
 
-🎉 Parabéns! Agora seu projeto conta com uma estratégia de **backup automatizada, incremental e segura**.
