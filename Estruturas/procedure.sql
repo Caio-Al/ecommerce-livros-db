@@ -75,6 +75,7 @@ END$$
 
 DELIMITER ;
 
+-- Procedure para criar um pedido com transação e tratamento de erros
 
 DELIMITER $$
 
@@ -132,6 +133,30 @@ BEGIN
         SET p_mensagem_status = 'Pedido criado com sucesso!';
     END IF;
 
+END$$
+
+DELIMITER ;
+
+-- Procedure para gerar relatório de vendas por período
+-- (requisito do projeto)
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_relatorio_vendas_por_periodo(
+    IN data_inicio DATE,
+    IN data_fim DATE
+)
+BEGIN
+    SELECT
+        COUNT(DISTINCT p.id) AS total_pedidos, -- Número total de pedidos únicos no período
+        SUM(ip.quantidade) AS total_livros_vendidos, -- Quantidade total de livros vendidos
+        SUM(ip.quantidade * ip.preco_unitario) AS receita_total -- Receita total gerada
+    FROM
+        Pedidos p
+    JOIN
+        Itens_Pedido ip ON p.id = ip.pedido_id
+    WHERE
+        DATE(p.data_pedido) BETWEEN data_inicio AND data_fim;
 END$$
 
 DELIMITER ;
