@@ -29,38 +29,44 @@ END$$
 
  -- Procedure para gerar relatório de vendas por categoria (requisito do projeto)
 CREATE PROCEDURE sp_gerar_relatorio_vendas(
-    IN p_data_inicio DATE, IN p_data_fim DATE
+    IN p_data_inicio DATE, 
+    IN p_data_fim DATE
 )
 BEGIN
     SELECT
         c.nome AS categoria,
         SUM(ip.quantidade) AS total_livros_vendidos,
-        SUM(ip.quantidade * ip.preco_unitario) AS receita_total
+        SUM(ip.quantidade * ip.preco_unitario) AS receita_produtos,
+        SUM(p.valor_frete) AS total_frete_arrecadado,
+        SUM(p.valor_imposto) AS total_impostos_arrecadado,
+        (SUM(ip.quantidade * ip.preco_unitario) + SUM(p.valor_frete) + SUM(p.valor_imposto)) AS receita_bruta_total
     FROM Itens_Pedido ip
     INNER JOIN Pedidos p ON ip.pedido_id = p.id
     INNER JOIN Livros l ON ip.livro_id = l.id
     INNER JOIN Categorias c ON l.categoria_id = c.id
     WHERE DATE(p.data_pedido) BETWEEN p_data_inicio AND p_data_fim
     GROUP BY c.nome
-    ORDER BY receita_total DESC;
+    ORDER BY receita_bruta_total DESC;
 END$$
 
 -- Procedure adicional para relatório de vendas por autor
 CREATE PROCEDURE sp_relatorio_vendas_por_autor(
-IN data_inicio DATE, IN data_fim DATE
-    )
+    IN data_inicio DATE, 
+    IN data_fim DATE
+)
 BEGIN
-SELECT
-    a.nome AS autor,
-    SUM(ip.quantidade) AS total_vendido,
-    SUM(ip.quantidade * ip.preco_unitario) AS total_receita
-FROM Itens_Pedido ip
-JOIN Livros l ON ip.livro_id = l.id
-JOIN Autores a ON l.autor_id = a.id
-JOIN Pedidos p ON ip.pedido_id = p.id
-WHERE DATE(p.data_pedido) BETWEEN data_inicio AND data_fim
-GROUP BY a.nome
-ORDER BY total_vendido DESC;
+    SELECT
+        a.nome AS autor,
+        SUM(ip.quantidade) AS total_vendido,
+        SUM(ip.quantidade * ip.preco_unitario) AS receita_produtos,
+        (SUM(ip.quantidade * ip.preco_unitario) + SUM(p.valor_frete) + SUM(p.valor_imposto)) AS receita_bruta_total
+    FROM Itens_Pedido ip
+    JOIN Livros l ON ip.livro_id = l.id
+    JOIN Autores a ON l.autor_id = a.id
+    JOIN Pedidos p ON ip.pedido_id = p.id
+    WHERE DATE(p.data_pedido) BETWEEN data_inicio AND data_fim
+    GROUP BY a.nome
+    ORDER BY total_vendido DESC;
 END$$
 
 -- Procedure adicional para cadastro de cliente (considerando hash e salt)
@@ -79,24 +85,29 @@ DELIMITER ;
 
 DELIMITER $$
 
+
 CREATE PROCEDURE sp_criar_pedido (
     IN p_cliente_id INT UNSIGNED,
-    OUT p_pedido_id INT UNSIGNED, -- Retorna o ID do pedido criado
-    OUT p_mensagem_status VARCHAR(255) -- Retorna uma mensagem de sucesso ou erro
+    OUT p_pedido_id INT UNSIGNED,
+    OUT p_mensagem_status VARCHAR(255)
 )
 BEGIN
     DECLARE v_num_itens_carrinho INT;
+    DECLARE v_subtotal_produtos DECIMAL(10,2);
+    DECLARE v_valor_imposto DECIMAL(10,2);
+    DECLARE v_valor_frete DECIMAL(10,2);
+    
+    SET v_valor_frete = 15.00;
+    
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        ROLLBACK; -- Desfaz todas as operações em caso de erro
+        ROLLBACK;
         SET p_pedido_id = NULL;
         SET p_mensagem_status = 'Erro ao criar o pedido. Transação desfeita.';
     END;
 
-    -- Inicia a transação para garantir que todas as operações sejam atômicas
     START TRANSACTION;
 
-    -- 1. Verificar se o carrinho do cliente não está vazio
     SELECT COUNT(*) INTO v_num_itens_carrinho
     FROM Carrinho
     WHERE cliente_id = p_cliente_id;
@@ -104,35 +115,36 @@ BEGIN
     IF v_num_itens_carrinho = 0 THEN
         SET p_pedido_id = NULL;
         SET p_mensagem_status = 'Carrinho de compras vazio. Não é possível criar um pedido.';
-        ROLLBACK; -- Desfaz a transação (embora nada tenha sido feito ainda, é boa prática)
+        ROLLBACK;
     ELSE
-        -- 2. Inserir o novo pedido na tabela Pedidos
-        INSERT INTO Pedidos (cliente_id, status)
-        VALUES (p_cliente_id, 'Aberto'); -- Status inicial 'Aberto'
+        SELECT SUM(liv.preco * carr.quantidade) INTO v_subtotal_produtos
+        FROM Carrinho carr
+        JOIN Livros liv ON carr.livro_id = liv.id
+        WHERE carr.cliente_id = p_cliente_id;
+        
+        SET v_valor_imposto = v_subtotal_produtos * 0.05;
 
-        -- Capturar o ID do pedido recém-criado
+        INSERT INTO Pedidos (cliente_id, status, valor_frete, valor_imposto)
+        VALUES (p_cliente_id, 'Aberto', v_valor_frete, v_valor_imposto);
+
         SET p_pedido_id = LAST_INSERT_ID();
 
-        -- 3. Mover os itens do carrinho para a tabela Itens_Pedido
         INSERT INTO Itens_Pedido (pedido_id, livro_id, quantidade, preco_unitario)
         SELECT
             p_pedido_id,
             carr.livro_id,
             carr.quantidade,
-            liv.preco -- Captura o preço atual do livro no momento da compra
+            liv.preco
         FROM Carrinho carr
         JOIN Livros liv ON carr.livro_id = liv.id
         WHERE carr.cliente_id = p_cliente_id;
 
-        -- 4. Limpar o carrinho do cliente após a criação do pedido
         DELETE FROM Carrinho
         WHERE cliente_id = p_cliente_id;
 
-        -- Se tudo correu bem, confirma a transação
         COMMIT;
         SET p_mensagem_status = 'Pedido criado com sucesso!';
     END IF;
-
 END$$
 
 DELIMITER ;
@@ -148,15 +160,50 @@ CREATE PROCEDURE sp_relatorio_vendas_por_periodo(
 )
 BEGIN
     SELECT
-        COUNT(DISTINCT p.id) AS total_pedidos, -- Número total de pedidos únicos no período
-        SUM(ip.quantidade) AS total_livros_vendidos, -- Quantidade total de livros vendidos
-        SUM(ip.quantidade * ip.preco_unitario) AS receita_total -- Receita total gerada
-    FROM
-        Pedidos p
-    JOIN
-        Itens_Pedido ip ON p.id = ip.pedido_id
+        COUNT(DISTINCT p.id) AS total_pedidos,
+        SUM(ip.quantidade) AS total_livros_vendidos,
+        SUM(ip.quantidade * ip.preco_unitario) AS receita_produtos,
+        SUM(p.valor_frete) AS total_frete,
+        SUM(p.valor_imposto) AS total_impostos,
+        (SUM(ip.quantidade * ip.preco_unitario) + SUM(p.valor_frete) + SUM(p.valor_imposto)) AS receita_bruta_total
+    FROM Pedidos p
+    JOIN Itens_Pedido ip ON p.id = ip.pedido_id
+    WHERE DATE(p.data_pedido) BETWEEN data_inicio AND data_fim;
+END$$
+
+DELIMITER ;
+
+-- Procedure para atualizar dados do cliente
+-- (requisito do projeto)
+DELIMITER $$
+
+CREATE PROCEDURE sp_atualizar_cliente(
+    IN p_cliente_id INT UNSIGNED,
+    IN p_nome VARCHAR(255),
+    IN p_email VARCHAR(255),
+    IN p_endereco VARCHAR(255)
+)
+BEGIN
+    UPDATE Clientes
+    SET
+        nome = p_nome,
+        email = p_email,
+        endereco = p_endereco
     WHERE
-        DATE(p.data_pedido) BETWEEN data_inicio AND data_fim;
+        id = p_cliente_id;
+END$$
+
+DELIMITER ;
+-- Procedure para excluir cliente
+-- (requisito do projeto)
+DELIMITER $$
+
+CREATE PROCEDURE sp_excluir_cliente(
+    IN p_cliente_id INT UNSIGNED
+)
+BEGIN
+    DELETE FROM Clientes
+    WHERE id = p_cliente_id;
 END$$
 
 DELIMITER ;

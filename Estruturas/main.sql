@@ -1,12 +1,3 @@
--- =====================================================================================
--- SCRIPT SQL PARA O E-COMMERCE DE LIVROS
---
--- Combina as melhores práticas dos scripts analisados:
--- 1. Estrutura base fiel aos requisitos do PDF (do Script (1).sql).
--- 2. Modelo de segurança com Hash e Salt para senhas (do EcommerceLivros.sql).
--- 3. Povoamento de dados completo e procedures de relatórios (do livraria_db (1).sql).
--- 4. Tratamento de erro explícito para gerenciamento de estoque (do EcommerceLivros.sql).
--- =====================================================================================
 
 -- 1. CRIAÇÃO DO BANCO DE DADOS
 CREATE DATABASE IF NOT EXISTS ecommerce_livros_db;
@@ -61,6 +52,8 @@ CREATE TABLE Pedidos (
     cliente_id INT UNSIGNED NOT NULL,
     data_pedido DATETIME DEFAULT CURRENT_TIMESTAMP,
     status ENUM('Aberto', 'Enviado', 'Entregue', 'Cancelado') NOT NULL DEFAULT 'Aberto',
+    valor_frete DECIMAL(10,2) NOT NULL,
+    valor_imposto DECIMAL(10,2) NOT NULL,
     FOREIGN KEY (cliente_id) REFERENCES Clientes(id)
 );
 

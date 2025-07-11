@@ -37,11 +37,11 @@ INSERT INTO Clientes (nome, email, hash_senha, salt_senha, endereco) VALUES
 ('Carlos Anderson', 'carlosanderson10@gmail.com', 'hash_exemplo_4', 'salt_exemplo_4', 'Av. das Palmeiras, 101'),
 ('João Miguel', 'joaomiguel58@gmail.com', 'hash_exemplo_5', 'salt_exemplo_5', 'Rua do Sol, 202');
 
-INSERT INTO Pedidos (cliente_id, data_pedido, status) VALUES
-(1, '2025-05-10 10:30:00', 'Entregue'),
-(2, '2025-05-12 14:00:00', 'Enviado'),
-(3, '2025-05-20 09:15:00', 'Aberto'),
-(1, '2025-06-01 18:45:00', 'Aberto');
+INSERT INTO Pedidos (cliente_id, data_pedido, status, valor_frete, valor_imposto) VALUES
+(1, '2025-05-10 10:30:00', 'Entregue', 15.00, 7.49),
+(2, '2025-05-12 14:00:00', 'Enviado', 15.00, 5.49),
+(3, '2025-05-20 09:15:00', 'Aberto', 15.00, 5.99),
+(1, '2025-06-01 18:45:00', 'Aberto', 15.00, 5.99);
 
 INSERT INTO Itens_Pedido (pedido_id, livro_id, quantidade, preco_unitario) VALUES
 (1, 1, 1, 69.90), (1, 6, 2, 39.90),

@@ -42,7 +42,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ecommerce_livros_db.Carrinho TO 'usuario
 GRANT EXECUTE ON PROCEDURE ecommerce_livros_db.sp_cadastrar_cliente TO 'usuario_cliente'@'localhost';
 GRANT EXECUTE ON PROCEDURE ecommerce_livros_db.sp_atualizar_estoque TO 'usuario_cliente'@'localhost';
 GRANT EXECUTE ON FUNCTION ecommerce_livros_db.fn_calcular_desconto TO 'usuario_cliente'@'localhost';
-
+GRANT EXECUTE ON PROCEDURE ecommerce_livros_db.sp_atualizar_cliente TO 'usuario_cliente'@'localhost';
+GRANT EXECUTE ON PROCEDURE ecommerce_livros_db.sp_excluir_cliente TO 'usuario_cliente'@'localhost';
+-- Permissão para executar a trigger de atualização de estoque.
+GRANT EXECUTE ON TRIGGER trg_atualiza_estoque_pedido TO 'usuario_cliente'@'localhost';
 
 -- === PERMISSÕES PARA O 'usuario_tecnico'@'%' ===
 -- Este usuário gerencia os dados da loja, mas não a estrutura do banco.
